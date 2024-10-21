@@ -1,17 +1,10 @@
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import tiktoken
-
-from graphrag.query.structured_search.global_search.search import GlobalSearch
-from graphrag.query.structured_search.local_search.search import LocalSearch
-from graphrag.query.llm.oai.chat_openai import ChatOpenAI
-from graphrag.query.llm.oai.typing import OpenaiApiType
-from graphrag.query.structured_search.global_search.community_context import GlobalCommunityContext
-from graphrag.query.structured_search.local_search.mixed_context import LocalSearchMixedContext
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from graphrag.query.context_builder.entity_extraction import EntityVectorStoreKey
-from graphrag.vector_stores.lancedb import LanceDBVectorStore
 from graphrag.query.indexer_adapters import (
     read_indexer_covariates,
     read_indexer_entities,
@@ -19,23 +12,33 @@ from graphrag.query.indexer_adapters import (
     read_indexer_reports,
     read_indexer_text_units,
 )
-from graphrag.query.input.loaders.dfs import (
-    store_entity_semantic_embeddings,
-)
-
+from graphrag.query.input.loaders.dfs import store_entity_semantic_embeddings
+from graphrag.query.llm.oai.chat_openai import ChatOpenAI
 from graphrag.query.llm.oai.embedding import OpenAIEmbedding
-from dotenv import load_dotenv
-
-from utils import convert_response_to_string, process_context_data, serialize_search_result
-from settings import load_settings_from_yaml
+from graphrag.query.llm.oai.typing import OpenaiApiType
+from graphrag.query.structured_search.global_search.community_context import (
+    GlobalCommunityContext,
+)
+from graphrag.query.structured_search.global_search.search import GlobalSearch
+from graphrag.query.structured_search.local_search.mixed_context import (
+    LocalSearchMixedContext,
+)
+from graphrag.query.structured_search.local_search.search import LocalSearch
+from graphrag.vector_stores.lancedb import LanceDBVectorStore
 
 from constants import (
     COMMUNITY_REPORT_TABLE,
-    ENTITY_TABLE,
-    ENTITY_EMBEDDING_TABLE,
-    RELATIONSHIP_TABLE,
     COVARIATE_TABLE,
+    ENTITY_EMBEDDING_TABLE,
+    ENTITY_TABLE,
+    RELATIONSHIP_TABLE,
     TEXT_UNIT_TABLE,
+)
+from settings import load_settings_from_yaml
+from utils import (
+    convert_response_to_string,
+    process_context_data,
+    serialize_search_result,
 )
 
 _ = load_dotenv()
@@ -46,7 +49,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://noworneverev.github.io"],
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,19 +57,26 @@ app.add_middleware(
 
 
 # Load environment variables
-api_key = settings.GRAPHRAG_API_KEY
-llm_model = settings.GRAPHRAG_LLM_MODEL
-embedding_model = settings.GRAPHRAG_EMBEDDING_MODEL
+llm_url = settings.GRAPHRAG_LLM_API_KEY
+llm_api_key = settings.GRAPHRAG_LLM_API_KEY
+llm_deployment_name = settings.GRAPHRAG_LLM_DEPLOYMENT
+llm_api_version = settings.GRAPHRAG_LLM_API_VERSION
+
+embedding_url = settings.GRAPHRAG_EMBEDDING_API_URL
+embedding_api_key = settings.GRAPHRAG_EMBEDDING_API_KEY
+embedding_deployment_name = settings.GRAPHRAG_EMBEDDING_DEPLOYMENT
 claim_extraction_enabled = settings.GRAPHRAG_CLAIM_EXTRACTION_ENABLED
 
 llm = ChatOpenAI(
-    api_key=api_key,
-    model=llm_model,
-    api_type=OpenaiApiType.OpenAI,
+    api_base=llm_url,
+    api_key=llm_api_key,
+    api_version=llm_api_version,
+    deployment_name=llm_deployment_name,
+    api_type=OpenaiApiType.AzureOpenAI,
     max_retries=20,
 )
 
-token_encoder = tiktoken.get_encoding("cl100k_base")
+token_encoder = tiktoken.get_encoding("o200k_base")
 
 INPUT_DIR = settings.INPUT_DIR
 COMMUNITY_LEVEL = settings.COMMUNITY_LEVEL
@@ -148,11 +158,11 @@ def setup_local_search():
         entity_text_embeddings=description_embedding_store,
         embedding_vectorstore_key=EntityVectorStoreKey.ID,
         text_embedder=OpenAIEmbedding(
-            api_key=api_key,
-            api_base=None,
-            api_type=OpenaiApiType.OpenAI,
-            model=embedding_model,
-            deployment_name=embedding_model,
+            api_base=embedding_url,
+            api_key=embedding_api_key,
+            api_type=OpenaiApiType.AzureOpenAI,
+            api_version=llm_api_version,
+            deployment_name=embedding_deployment_name,
             max_retries=20,
         ),
         token_encoder=token_encoder,

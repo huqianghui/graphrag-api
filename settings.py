@@ -1,13 +1,18 @@
-from pydantic_settings import BaseSettings
 import yaml
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
-    GRAPHRAG_LLM_MODEL: str
-    GRAPHRAG_EMBEDDING_MODEL: str
+    GRAPHRAG_LLM_API_URL: str
+    GRAPHRAG_LLM_API_KEY: str
+    GRAPHRAG_LLM_DEPLOYMENT: str
+    GRAPHRAG_EMBEDDING_API_URL: str
+    GRAPHRAG_LLM_API_VERSION: str
+    GRAPHRAG_EMBEDDING_API_KEY: str
+    GRAPHRAG_EMBEDDING_DEPLOYMENT: str
     GRAPHRAG_CLAIM_EXTRACTION_ENABLED: bool
     INPUT_DIR: str
     COMMUNITY_LEVEL: int
-    GRAPHRAG_API_KEY: str
 
     class Config:
         env_file = ".env"
