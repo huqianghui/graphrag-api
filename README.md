@@ -9,7 +9,7 @@ This project provides a FastAPI-based server implementation for handling both gl
 Clone the repository and install the required dependencies using the following commands:
 
 ```bash
-git clone git@github.com:noworneverev/graphrag-api.git
+git clone git@github.com:huqianghui/graphrag-api.git
 cd graphrag-api
 ```
 
