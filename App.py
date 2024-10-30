@@ -1,9 +1,11 @@
+import os
+
 import pandas as pd
 import tiktoken
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from graphrag.query.context_builder.entity_extraction import EntityVectorStoreKey
 from graphrag.query.indexer_adapters import (
     read_indexer_covariates,
@@ -232,9 +234,21 @@ async def local_search(query: str = Query(..., description="Search query for loc
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/status")
+@app.get("/")
 async def status():
     return JSONResponse(content={"status": "Server is up and running"})
+
+STATIC_FOLDER = 'static/artifacts/'
+
+@app.get("/parquet/{filename}")
+async def download_file(filename: str):
+    file_path = os.path.join(STATIC_FOLDER, filename)
+    
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(path=file_path, filename=filename, media_type='application/octet-stream')
+
 
 
 if __name__ == "__main__":
